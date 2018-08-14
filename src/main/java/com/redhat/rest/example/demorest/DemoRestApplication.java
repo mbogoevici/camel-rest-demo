@@ -7,9 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @SpringBootApplication
 @RestController
@@ -21,8 +19,13 @@ public class DemoRestApplication {
 
 	// Serves as 'remote URL' for the Camel invocaton
 	@GetMapping(path = "remoteURL")
-	public ResponseEntity<?> getData(@RequestParam("code") String code, @RequestParam("name") String name) {
-		return ResponseEntity.status(HttpStatus.OK).body("Code: " + code + " Name: " + name);
+	public ResponseEntity<?> getData(@RequestParam(value = "code", required = false) String code, @RequestParam(value = "name", required = false) String name) {
+		return ResponseEntity.status(HttpStatus.OK).body(" Code: " + code + " Name: " + name);
+	}
+
+	@PostMapping(path = "remoteURL")
+	public ResponseEntity<?> postData(@RequestBody Payload body, @RequestParam(value = "code", required = false) String code, @RequestParam(value = "name", required = false) String name) {
+		return ResponseEntity.status(HttpStatus.OK).body( "Code: " + code + " Name: " + name + " body: " + body);
 	}
 
 
@@ -37,6 +40,12 @@ public class DemoRestApplication {
 						.producerComponent("http4").host("localhost:8080");
 
 				rest("/localURL").get().to("rest:get:remoteURL?bridgeEndpoint=true&host=localhost:8080&queryParameters=code=foo&name=bar");
+
+				rest("/localURL").post()
+						.type(Payload.class) // convert to 'Payload' type automatically
+						.route()
+						.removeHeaders("*") // strip all headers (for this example) so that the received message HTTP headers do not confuse the REST producer when POSTing
+						.to("rest:post:remoteURL?host=localhost:8080&produces=application/json&queryParameters=code=foo&name=bar").endRest();
 
 			}
 		};
